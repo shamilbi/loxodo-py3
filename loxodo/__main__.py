@@ -43,13 +43,13 @@ def main():
     # In all other cases, use the "wx" frontend.
     try:
         import wx
-        assert wx.__version__.startswith('4.0.')
-    except AssertionError as e:
-        print('Found incompatible wxPython, the wxWidgets Python bindings: %s' % wx.__version__, file=sys.stderr)
-        print('Falling back to cmdline frontend.', file=sys.stderr)
-        print('', file=sys.stderr)
-        do_cli()
-        return
+    #    assert wx.__version__.startswith('4.0.')
+    #except AssertionError as e:
+    #    print('Found incompatible wxPython, the wxWidgets Python bindings: %s' % wx.__version__, file=sys.stderr)
+    #    print('Falling back to cmdline frontend.', file=sys.stderr)
+    #    print('', file=sys.stderr)
+    #    do_cli()
+    #    return
     except ImportError as e:
         print('Could not find wxPython, the wxWidgets Python bindings: %s' % e, file=sys.stderr)
         print('Falling back to cmdline frontend.', file=sys.stderr)
