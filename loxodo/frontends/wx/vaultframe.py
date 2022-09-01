@@ -316,6 +316,7 @@ class VaultFrame(wx.Frame):
         self.vault_file_name = filename
         self.vault_password = password
         self.statusbar.SetStatusText(_("Read Vault contents from disk"), 0)
+        self.SetTitle(f'Loxodo - {self.vault_file_name}')
 
     def save_vault(self, filename, password):
         """
