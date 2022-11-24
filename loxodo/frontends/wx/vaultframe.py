@@ -64,7 +64,7 @@ class VaultFrame(wx.Frame):
             self.InsertColumn(2, _("Group"))
             self.InsertColumn(3, _("ModTime"))
             self.SetColumnWidth(0, 256)
-            self.SetColumnWidth(1, 128)
+            self.SetColumnWidth(1, 180)
             self.SetColumnWidth(2, 180)
             self.SetColumnWidth(3, 128)
             self.sort_function = lambda e1: e1.group.lower()
