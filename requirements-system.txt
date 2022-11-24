@@ -1,3 +1,0 @@
-# for big dependencies
-# .venv/pyvenv.cfg: include-system-site-packages = true
-wxpython
