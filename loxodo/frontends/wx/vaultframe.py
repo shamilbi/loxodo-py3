@@ -623,16 +623,16 @@ if not, write to the Free Software Foundation, Inc.,
             return
         entry = self.list.displayed_entries[index]
 
-        if ((entry.user != "") or (entry.passwd != "")):
-            dial = wx.MessageDialog(self,
-                                    _("Are you sure you want to delete this record? It contains a username or password and there is no way to undo this action."),
-                                    _("Really delete record?"),
-                                    wx.YES_NO | wx.YES_DEFAULT | wx.ICON_QUESTION
-                                    )
-            retval = dial.ShowModal()
-            dial.Destroy()
-            if retval != wx.ID_YES:
-                return
+        dial = wx.MessageDialog(
+                self,
+                _("Are you sure you want to delete this record? There is no way to undo this action."),
+                _("Really delete record?"),
+                wx.YES_NO | wx.YES_DEFAULT | wx.ICON_QUESTION
+                )
+        retval = dial.ShowModal()
+        dial.Destroy()
+        if retval != wx.ID_YES:
+            return
 
         self.vault.records.remove(entry)
         self.mark_modified()
