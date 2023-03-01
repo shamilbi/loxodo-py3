@@ -177,6 +177,7 @@ class VaultFrame(wx.Frame):
         self.list.Bind(wx.EVT_COMMAND_RIGHT_CLICK, self._on_list_contextmenu)
         self.list.Bind(wx.EVT_RIGHT_UP, self._on_list_contextmenu)
         self.list.Bind(wx.EVT_CHAR, self._on_list_box_char)
+        # EVT_LIST_COL_END_DRAG: A column has been resized by the user
 
         self.statusbar = self.CreateStatusBar(1, wx.STB_SIZEGRIP)
 
@@ -479,7 +480,7 @@ if not, write to the Free Software Foundation, Inc.,
             if dialog.ShowModal() != wx.ID_OK:
                 return
             filename = dialog.GetPath()
-        with open(filename, 'w', newline='') as fp:
+        with open(filename, 'w', newline='', encoding='utf-8') as fp:
             writer = csv.writer(fp, dialect='unix')
             writer.writerow(('Group', 'Title', 'Username', 'Password', 'URL', 'Notes'))
             for r in self.vault.records:
