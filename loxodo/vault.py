@@ -25,8 +25,9 @@ from hmac import HMAC
 import os
 import tempfile
 import time
-import uuid
+from uuid import UUID, uuid4
 import secrets
+import dataclasses
 
 from loxodo.twofish.twofish_ecb import TwofishECB
 from loxodo.twofish.twofish_cbc import TwofishCBC
@@ -44,24 +45,27 @@ class VaultVersionError(VaultFormatError):
     pass
 
 
+@dataclasses.dataclass
 class Field:
     """
     Contains the raw, on-disk representation of a record's field.
     """
-    def __init__(self, raw_type, raw_value):
-        self.raw_type = raw_type
-        self.raw_value = raw_value
-        self.raw_len = len(raw_value)
+    raw_type: int
+    raw_value: bytes
+
+    @property
+    def raw_len(self):
+        return len(self.raw_value)
 
 
+@dataclasses.dataclass
 class Header:
     """
     Contains the fields of a Vault header.
     """
-    def __init__(self):
-        self.raw_fields = {}
+    raw_fields: dict[int, Field] = dataclasses.field(default_factory=dict)
 
-    def add_raw_field(self, raw_field):
+    def add_raw_field(self, raw_field: Field):
         self.raw_fields[raw_field.raw_type] = raw_field
 
 
@@ -89,111 +93,111 @@ def _read_field_tlv(filehandle, cipher) -> Field:
     return Field(raw_type, raw_value)
 
 
+@dataclasses.dataclass
 class Record:
     """
     Contains the fields of an individual password record.
     """
-    def __init__(self):
-        self.raw_fields = {}
-        self._uuid = None
-        self._group: str = ""
-        self._title: str = ""
-        self._user = ""
-        self._notes = ""
-        self._passwd = ""
-        self._last_mod: int = 0
-        self._url = ""
+    raw_fields: dict[int, Field] = dataclasses.field(default_factory=dict)
+    _uuid: UUID = None
+    _group: str = ""
+    _title: str = ""
+    _user: str = ""
+    _notes: str = ""
+    _passwd: str = ""
+    _last_mod: int = 0
+    _url: str = ""
 
     @staticmethod
     def create():
         record = Record()
-        record.uuid = uuid.uuid4()
+        record.uuid = uuid4()
         record.last_mod = int(time.time())
         return record
 
-    def add_raw_field(self, raw_field):
+    def add_raw_field(self, raw_field: Field):
         self.raw_fields[raw_field.raw_type] = raw_field
         if raw_field.raw_type == 0x01:
-            self._uuid = uuid.UUID(bytes_le=raw_field.raw_value)
-        if raw_field.raw_type == 0x02:
+            self._uuid = UUID(bytes_le=raw_field.raw_value)
+        elif raw_field.raw_type == 0x02:
             self._group = raw_field.raw_value.decode('utf_8', 'replace')
-        if raw_field.raw_type == 0x03:
+        elif raw_field.raw_type == 0x03:
             self._title = raw_field.raw_value.decode('utf_8', 'replace')
-        if raw_field.raw_type == 0x04:
+        elif raw_field.raw_type == 0x04:
             self._user = raw_field.raw_value.decode('utf_8', 'replace')
-        if raw_field.raw_type == 0x05:
+        elif raw_field.raw_type == 0x05:
             self._notes = raw_field.raw_value.decode('utf_8', 'replace')
-        if raw_field.raw_type == 0x06:
+        elif raw_field.raw_type == 0x06:
             self._passwd = raw_field.raw_value.decode('utf_8', 'replace')
-        if raw_field.raw_type == 0x0c and raw_field.raw_len == 4:
+        elif raw_field.raw_type == 0x0c and raw_field.raw_len == 4:
             self._last_mod = struct.unpack("<L", raw_field.raw_value)[0]
-        if raw_field.raw_type == 0x0d:
+        elif raw_field.raw_type == 0x0d:
             self._url = raw_field.raw_value.decode('utf_8', 'replace')
 
     def mark_modified(self):
         self.last_mod = int(time.time())
 
     @property
-    def uuid(self):
+    def uuid(self) -> UUID:
         return self._uuid
 
     @uuid.setter
-    def uuid(self, value):
+    def uuid(self, value: UUID):
         self._uuid = value
         raw_id = 0x01
         self.raw_fields[raw_id] = Field(raw_id, value.bytes_le)
         self.mark_modified()
 
     @property
-    def group(self):
+    def group(self) -> str:
         return self._group
 
     @group.setter
-    def group(self, value):
+    def group(self, value: str):
         self._group = value
         raw_id = 0x02
         self.raw_fields[raw_id] = Field(raw_id, value.encode('utf_8', 'replace'))
         self.mark_modified()
 
     @property
-    def title(self):
+    def title(self) -> str:
         return self._title
 
     @title.setter
-    def title(self, value):
+    def title(self, value: str):
         self._title = value
         raw_id = 0x03
         self.raw_fields[raw_id] = Field(raw_id, value.encode('utf_8', 'replace'))
         self.mark_modified()
 
     @property
-    def user(self):
+    def user(self) -> str:
         return self._user
 
     @user.setter
-    def user(self, value):
+    def user(self, value: str):
         self._user = value
         raw_id = 0x04
         self.raw_fields[raw_id] = Field(raw_id, value.encode('utf_8', 'replace'))
         self.mark_modified()
 
     @property
-    def notes(self):
+    def notes(self) -> str:
         return self._notes
 
     @notes.setter
-    def notes(self, value):
+    def notes(self, value: str):
         self._notes = value
         raw_id = 0x05
         self.raw_fields[raw_id] = Field(raw_id, value.encode('utf_8', 'replace'))
         self.mark_modified()
 
     @property
-    def passwd(self):
+    def passwd(self) -> str:
         return self._passwd
 
     @passwd.setter
-    def passwd(self, value):
+    def passwd(self, value: str):
         self._passwd = value
         raw_id = 0x06
         self.raw_fields[raw_id] = Field(raw_id, value.encode('utf_8', 'replace'))
@@ -210,17 +214,17 @@ class Record:
         self.raw_fields[raw_id] = Field(raw_id, struct.pack("<L", value))
 
     @property
-    def url(self):
+    def url(self) -> str:
         return self._url
 
     @url.setter
-    def url(self, value):
+    def url(self, value: str):
         self._url = value
         raw_id = 0x0d
         self.raw_fields[raw_id] = Field(raw_id, value.encode('utf_8', 'replace'))
         self.mark_modified()
 
-    def is_corresponding(self, record):
+    def is_corresponding(self, record) -> bool:
         """
         Return True if Records are the same, based on either UUIDs (if available) or title
         """
@@ -249,7 +253,7 @@ class Record:
 def duplicate_record(record2: Record) -> Record:
     record = Record()
     record.merge(record2)
-    record.uuid = uuid.uuid4()
+    record.uuid = uuid4()
     record.last_mod = int(time.time())
     record.title = record2.title + ' (copy)'
     return record
