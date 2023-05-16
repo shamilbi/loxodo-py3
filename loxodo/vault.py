@@ -21,7 +21,7 @@
 
 import hashlib
 import struct
-from hmac import HMAC
+from hmac import HMAC, compare_digest
 import os
 import tempfile
 import time
@@ -346,7 +346,7 @@ class Vault:
         self.f_b3 = None
         self.f_b4 = None
         self.f_iv = None
-        self.f_hmac = None
+        self.f_hmac: bytes = None
         self.header = Header()
         self.records = []
         if not filename:
@@ -445,7 +445,13 @@ class Vault:
         self.f_hmac = filehandle.read(32)  # HMAC: used to verify Vault's integrity
 
         my_hmac = hmac_checker.digest()
-        if self.f_hmac != my_hmac:
+        #if self.f_hmac != my_hmac:
+        if not compare_digest(self.f_hmac, my_hmac):
+            # https://docs.python.org/3.10/library/hmac.html#hmac.HMAC.digest
+            # When comparing the output of digest() to an externally supplied
+            # digest during a verification routine, it is recommended to use
+            # the compare_digest() function instead of the == operator
+            # to reduce the vulnerability to timing attacks
             raise VaultFormatError("File integrity check failed")
 
         #self.records.sort(key=lambda r: r._group + r._title)
