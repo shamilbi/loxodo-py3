@@ -19,7 +19,7 @@
 
 # pylint: disable=bad-indentation,too-many-ancestors,unused-argument
 # pylint: disable=too-many-statements,too-many-locals,too-many-branches
-# pylint: disable=line-too-long
+# pylint: disable=line-too-long,no-member
 
 import os
 import csv
@@ -305,6 +305,11 @@ class VaultFrame(wx.Frame):
             self.save_vault(self.vault_file_name, self.vault_password)
         self.list.update_fields()
 
+    def set_title(self):
+        if self.vault:
+            header = self.vault.header
+            self.SetTitle(f'Loxodo - {self.vault_file_name}, {header.what_saved}, {header.last_save}')
+
     def open_vault(self, filename, password):
         """
         Set the Vault that this frame should display.
@@ -317,7 +322,7 @@ class VaultFrame(wx.Frame):
         self.vault_file_name = filename
         self.vault_password = password
         self.statusbar.SetStatusText(_("Read Vault contents from disk"), 0)
-        self.SetTitle(f'Loxodo - {self.vault_file_name}')
+        self.set_title()
 
     def save_vault(self, filename, password):
         """
@@ -329,6 +334,7 @@ class VaultFrame(wx.Frame):
             self.vault_password = password
             self.vault.write_to_file(filename, password)
             self.statusbar.SetStatusText(_("Wrote Vault contents to disk"), 0)
+            self.set_title()
         except RuntimeError:
             dial = wx.MessageDialog(self,
                                     _("Could not write Vault contents to disk"),

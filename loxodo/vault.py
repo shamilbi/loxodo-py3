@@ -29,9 +29,11 @@ from enum import IntEnum
 from uuid import UUID, uuid4
 import secrets
 import dataclasses
+from datetime import datetime
 
-from loxodo.twofish.twofish_ecb import TwofishECB
-from loxodo.twofish.twofish_cbc import TwofishCBC
+from .twofish.twofish_ecb import TwofishECB
+from .twofish.twofish_cbc import TwofishCBC
+from . import __version__
 
 
 class BadPasswordError(RuntimeError):
@@ -68,6 +70,21 @@ class Header:
 
     def add_raw_field(self, raw_field: Field):
         self.raw_fields[raw_field.raw_type] = raw_field
+
+    @property
+    def what_saved(self):
+        if Headers.WHAT_SAVED in self.raw_fields:
+            field = self.raw_fields[Headers.WHAT_SAVED]
+            return field.raw_value.decode('utf_8', 'replace')
+        return ""
+
+    @property
+    def last_save(self):
+        if Headers.LAST_SAVE in self.raw_fields:
+            field = self.raw_fields[Headers.LAST_SAVE]
+            i = struct.unpack("<L", field.raw_value)[0]
+            return datetime.fromtimestamp(i).strftime('%Y-%m-%d %H:%M:%S')
+        return ""
 
 
 class Headers(IntEnum):
@@ -469,7 +486,7 @@ class Vault:
     def write_to_stream(self, filehandle, password: bytes):
         _last_save = struct.pack("<L", int(time.time()))
         self.header.raw_fields[Headers.LAST_SAVE] = Field(Headers.LAST_SAVE, _last_save)
-        _what_saved = "Loxodo 0.0-git".encode("utf_8", "replace")
+        _what_saved = f'Loxodo v{__version__}'.encode("utf_8", "replace")
         self.header.raw_fields[Headers.WHAT_SAVED] = Field(Headers.WHAT_SAVED, _what_saved)
 
         # FIXME: choose new SALT, B1-B4, IV values on each file write? Conflicting Specs!
