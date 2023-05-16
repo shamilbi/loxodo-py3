@@ -25,6 +25,7 @@ from hmac import HMAC
 import os
 import tempfile
 import time
+from enum import IntEnum
 from uuid import UUID, uuid4
 import secrets
 import dataclasses
@@ -69,6 +70,30 @@ class Header:
         self.raw_fields[raw_field.raw_type] = raw_field
 
 
+class Headers(IntEnum):
+    'currently implemented headers, the rest are saved as is'
+    LAST_SAVE = 0x04    # Timestamp of last save
+    WHAT_SAVED = 0x06   # What performed last save
+
+
+class Fields(IntEnum):
+    'currently implemented fields, the rest are saved as is'
+    UUID = 0x01
+    GROUP = 0x02
+    TITLE = 0x03
+    USER = 0x04
+    NOTES = 0x05
+    PASSWD = 0x06
+    LAST_MOD = 0x0c
+    URL = 0x0d
+
+
+END_OF_ENTRY: int = 0xff     # end of header or fields
+
+FILE_MAGIC: bytes = b'PWS3'
+END_OF_FILE: bytes = b"PWS3-EOFPWS3-EOF"
+
+
 def _read_field_tlv(filehandle, cipher) -> Field:
     """
     Return one field of a vault record by reading from the given file handle.
@@ -76,7 +101,7 @@ def _read_field_tlv(filehandle, cipher) -> Field:
     data = filehandle.read(16)
     if not data or len(data) < 16:
         raise VaultFormatError("EOF encountered when parsing record field")
-    if data == b"PWS3-EOFPWS3-EOF":
+    if data == END_OF_FILE:
         return None
     data = cipher.decrypt(data)
     raw_len = struct.unpack("<L", data[0:4])[0]
@@ -117,21 +142,21 @@ class Record:
 
     def add_raw_field(self, raw_field: Field):
         self.raw_fields[raw_field.raw_type] = raw_field
-        if raw_field.raw_type == 0x01:
+        if raw_field.raw_type == Fields.UUID:
             self._uuid = UUID(bytes_le=raw_field.raw_value)
-        elif raw_field.raw_type == 0x02:
+        elif raw_field.raw_type == Fields.GROUP:
             self._group = raw_field.raw_value.decode('utf_8', 'replace')
-        elif raw_field.raw_type == 0x03:
+        elif raw_field.raw_type == Fields.TITLE:
             self._title = raw_field.raw_value.decode('utf_8', 'replace')
-        elif raw_field.raw_type == 0x04:
+        elif raw_field.raw_type == Fields.USER:
             self._user = raw_field.raw_value.decode('utf_8', 'replace')
-        elif raw_field.raw_type == 0x05:
+        elif raw_field.raw_type == Fields.NOTES:
             self._notes = raw_field.raw_value.decode('utf_8', 'replace')
-        elif raw_field.raw_type == 0x06:
+        elif raw_field.raw_type == Fields.PASSWD:
             self._passwd = raw_field.raw_value.decode('utf_8', 'replace')
-        elif raw_field.raw_type == 0x0c and raw_field.raw_len == 4:
+        elif raw_field.raw_type == Fields.LAST_MOD and raw_field.raw_len == 4:
             self._last_mod = struct.unpack("<L", raw_field.raw_value)[0]
-        elif raw_field.raw_type == 0x0d:
+        elif raw_field.raw_type == Fields.URL:
             self._url = raw_field.raw_value.decode('utf_8', 'replace')
 
     def mark_modified(self):
@@ -144,7 +169,7 @@ class Record:
     @uuid.setter
     def uuid(self, value: UUID):
         self._uuid = value
-        raw_id = 0x01
+        raw_id = Fields.UUID
         self.raw_fields[raw_id] = Field(raw_id, value.bytes_le)
         self.mark_modified()
 
@@ -155,7 +180,7 @@ class Record:
     @group.setter
     def group(self, value: str):
         self._group = value
-        raw_id = 0x02
+        raw_id = Fields.GROUP
         self.raw_fields[raw_id] = Field(raw_id, value.encode('utf_8', 'replace'))
         self.mark_modified()
 
@@ -166,7 +191,7 @@ class Record:
     @title.setter
     def title(self, value: str):
         self._title = value
-        raw_id = 0x03
+        raw_id = Fields.TITLE
         self.raw_fields[raw_id] = Field(raw_id, value.encode('utf_8', 'replace'))
         self.mark_modified()
 
@@ -177,7 +202,7 @@ class Record:
     @user.setter
     def user(self, value: str):
         self._user = value
-        raw_id = 0x04
+        raw_id = Fields.USER
         self.raw_fields[raw_id] = Field(raw_id, value.encode('utf_8', 'replace'))
         self.mark_modified()
 
@@ -188,7 +213,7 @@ class Record:
     @notes.setter
     def notes(self, value: str):
         self._notes = value
-        raw_id = 0x05
+        raw_id = Fields.NOTES
         self.raw_fields[raw_id] = Field(raw_id, value.encode('utf_8', 'replace'))
         self.mark_modified()
 
@@ -199,7 +224,7 @@ class Record:
     @passwd.setter
     def passwd(self, value: str):
         self._passwd = value
-        raw_id = 0x06
+        raw_id = Fields.PASSWD
         self.raw_fields[raw_id] = Field(raw_id, value.encode('utf_8', 'replace'))
         self.mark_modified()
 
@@ -210,7 +235,7 @@ class Record:
     @last_mod.setter
     def last_mod(self, value: int):
         self._last_mod = value
-        raw_id = 0x0c
+        raw_id = Fields.LAST_MOD
         self.raw_fields[raw_id] = Field(raw_id, struct.pack("<L", value))
 
     @property
@@ -220,7 +245,7 @@ class Record:
     @url.setter
     def url(self, value: str):
         self._url = value
-        raw_id = 0x0d
+        raw_id = Fields.URL
         self.raw_fields[raw_id] = Field(raw_id, value.encode('utf_8', 'replace'))
         self.mark_modified()
 
@@ -268,7 +293,7 @@ def _write_field_tlv(filehandle, cipher, field):
     Write one field of a vault record using the given file handle.
     """
     if field is None:
-        filehandle.write(b"PWS3-EOFPWS3-EOF")
+        filehandle.write(END_OF_FILE)
         return
 
     assert len(field.raw_value) == field.raw_len
@@ -312,7 +337,7 @@ class Vault:
     http://passwordsafe.svn.sourceforge.net/viewvc/passwordsafe/trunk/pwsafe/pwsafe/docs/formatV3.txt?revision=2139
     """
     def __init__(self, password, filename=None):
-        self.f_tag = None
+        self.f_tag: bytes = None
         self.f_salt = None
         self.f_iter = None
         self.f_sha_ps = None
@@ -335,7 +360,7 @@ class Vault:
         vault.write_to_file(filename, password)
 
     def _create_empty(self, password: bytes):
-        self.f_tag = 'PWS3'
+        self.f_tag = FILE_MAGIC
         self.f_salt = _urandom(32)
         self.f_iter = 2048
         stretched_password = _stretch_password(password, self.f_salt, self.f_iter)
@@ -362,7 +387,7 @@ class Vault:
         # read boilerplate
 
         self.f_tag = filehandle.read(4)  # TAG: magic tag
-        if self.f_tag != b'PWS3':
+        if self.f_tag != FILE_MAGIC:
             raise VaultVersionError("Not a PasswordSafe V3 file")
 
         self.f_salt = filehandle.read(32)  # SALT: SHA-256 salt
@@ -396,7 +421,7 @@ class Vault:
             field = _read_field_tlv(filehandle, cipher)
             if not field:
                 break
-            if field.raw_type == 0xff:
+            if field.raw_type == END_OF_ENTRY:
                 break
             self.header.add_raw_field(field)
             hmac_checker.update(field.raw_value)
@@ -408,7 +433,7 @@ class Vault:
             field = _read_field_tlv(filehandle, cipher)
             if not field:
                 break
-            if field.raw_type == 0xff:
+            if field.raw_type == END_OF_ENTRY:
                 self.records.append(current_record)
                 current_record = Record()
             else:
@@ -437,9 +462,9 @@ class Vault:
 
     def write_to_stream(self, filehandle, password: bytes):
         _last_save = struct.pack("<L", int(time.time()))
-        self.header.raw_fields[0x04] = Field(0x04, _last_save)
+        self.header.raw_fields[Headers.LAST_SAVE] = Field(Headers.LAST_SAVE, _last_save)
         _what_saved = "Loxodo 0.0-git".encode("utf_8", "replace")
-        self.header.raw_fields[0x06] = Field(0x06, _what_saved)
+        self.header.raw_fields[Headers.WHAT_SAVED] = Field(Headers.WHAT_SAVED, _what_saved)
 
         # FIXME: choose new SALT, B1-B4, IV values on each file write? Conflicting Specs!
 
@@ -467,7 +492,7 @@ class Vault:
         hmac_checker = HMAC(key_l, b"", hashlib.sha256)
         cipher = TwofishCBC(key_k, self.f_iv)
 
-        end_of_record = Field(0xff, b"")
+        end_of_record = Field(END_OF_ENTRY, b"")
 
         for field in self.header.raw_fields.values():
             _write_field_tlv(filehandle, cipher, field)
