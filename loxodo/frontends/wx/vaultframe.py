@@ -678,7 +678,7 @@ if not, write to the Free Software Foundation, Inc.,
                 return
             entry = self.list.displayed_entries[index]
             try:
-                totp = mintotp.totp(entry.passwd)
+                totp = mintotp.totp(entry.passwd.replace(' ', ''))  # A B -> AB
                 self._copy_to_clipboard(totp, duration=10)
                 totp2 = ' '.join([totp[i:i + 3] for i in range(0, len(totp), 3)])   # 123 456 ...
                 self.statusbar.SetStatusText(_('Copied TOTP (%s) of "%s" to clipboard') % (totp2, entry.title), 0)
