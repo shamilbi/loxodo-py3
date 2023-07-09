@@ -26,6 +26,7 @@ import csv
 import binascii
 import webbrowser
 from datetime import datetime
+import re
 
 import wx
 import wx.adv
@@ -677,12 +678,20 @@ if not, write to the Free Software Foundation, Inc.,
             if index == -1:
                 return
             entry = self.list.displayed_entries[index]
+            passwd2 = entry.passwd.replace(' ', '')     # A B -> AB
+            m = re.match(r'([a-z0-9]+):', passwd2, flags=re.A + re.I)   # sha1:....
+            if m:
+                digest = m.group(1)
+                passwd2 = passwd2[len(digest) + 1:]
+            else:
+                digest = 'sha1'
             try:
-                totp = mintotp.totp(entry.passwd.replace(' ', ''))  # A B -> AB
+                totp = mintotp.totp(passwd2, digest=digest)
                 self._copy_to_clipboard(totp, duration=10)
                 totp2 = ' '.join([totp[i:i + 3] for i in range(0, len(totp), 3)])   # 123 456 ...
-                self.statusbar.SetStatusText(_('Copied TOTP (%s) of "%s" to clipboard') % (totp2, entry.title), 0)
-            except (RuntimeError, binascii.Error):
+                self.statusbar.SetStatusText(f'TOTP({digest}): {totp2}', 0)
+            except (RuntimeError, binascii.Error, ValueError):
+                # ValueError: totp: bad digest
                 self.statusbar.SetStatusText(_('Error copying TOTP of "%s" to clipboard') % entry.title, 0)
 
     def _on_open_url(self, dummy):
