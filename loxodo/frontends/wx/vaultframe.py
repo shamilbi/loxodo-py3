@@ -621,7 +621,7 @@ if not, write to the Free Software Foundation, Inc.,
         Event handler: Fires when user chooses this menu item.
         """
         index = self.list.GetFirstSelected()
-        if index is None:
+        if index == -1:
             return
         entry = self.list.displayed_entries[index]
 
@@ -648,7 +648,7 @@ if not, write to the Free Software Foundation, Inc.,
 
     def _on_add_duplicate(self, dummy):
         index = self.list.GetFirstSelected()
-        if index is None:
+        if index == -1:
             return
         entry2 = self.list.displayed_entries[index]
         entry = duplicate_record(entry2)
