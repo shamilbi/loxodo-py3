@@ -182,8 +182,9 @@ class VaultFrame(wx.Frame):
                 del self.displayed_entries[i]
                 self.SetItemCount(len(self.displayed_entries))
                 wx.ListCtrl.Refresh(self)
-                self.select_index(i)
-
+                if self.GetFirstSelected() == -1:
+                    # last entry
+                    self.select_index(i)
 
     def __init__(self, *args, **kwds):
         kwds["style"] = wx.DEFAULT_FRAME_STYLE
