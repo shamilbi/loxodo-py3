@@ -68,7 +68,8 @@ class VaultFrame(wx.Frame):
             self.SetColumnWidth(1, 180)
             self.SetColumnWidth(2, 180)
             self.SetColumnWidth(3, 128)
-            self.sort_function = lambda e1: e1.group.lower()
+            #self.sort_function = lambda e1: e1.group.lower()
+            self.sort_function = lambda e1: (e1.title.lower(), e1.user.lower(), e1.last_mod)
             self.update_fields()
 
         def OnGetItemText(self, item, col):
@@ -111,6 +112,9 @@ class VaultFrame(wx.Frame):
             wx.ListCtrl.Refresh(self)
 
         def filter_record(self,record):
+            if not self._filterstring:
+                return True
+
             if record.title.lower().find(self._filterstring.lower()) >= 0:
                return True
 
@@ -386,11 +390,18 @@ class VaultFrame(wx.Frame):
         """
         col = event.GetColumn()
         if col == 0:
-            self.list.sort_function = lambda e1: e1.title.lower()
-        if col == 1:
-            self.list.sort_function = lambda e1: e1.user.lower()
-        if col == 2:
-            self.list.sort_function = lambda e1: e1.group.lower()
+            #self.list.sort_function = lambda e1: e1.title.lower()
+            self.list.sort_function = lambda e1: (e1.title.lower(), e1.user.lower(), e1.last_mod)
+        elif col == 1:
+            #self.list.sort_function = lambda e1: e1.user.lower()
+            self.list.sort_function = lambda e1: (e1.user.lower(), e1.last_mod)
+        elif col == 2:
+            #self.list.sort_function = lambda e1: e1.group.lower()
+            self.list.sort_function = lambda e1: (e1.group.lower(), e1.last_mod)
+        elif col == 3:
+            self.list.sort_function = lambda e1: (e1.last_mod, e1.title.lower(), e1.user.lower())
+        else:
+            return
         self.list.update_fields()
 
     def _on_list_contextmenu(self, dummy):
