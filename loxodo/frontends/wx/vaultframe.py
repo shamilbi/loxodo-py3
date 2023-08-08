@@ -161,10 +161,28 @@ class VaultFrame(wx.Frame):
             """
             Selects and focuses the first item (if there is one)
             """
+            #self.deselect_all()
+            #if self.GetItemCount() > 0:
+            #    self.Select(0, True)
+            #    self.Focus(0)
+            self.select_index(0)
+
+        def select_index(self, i: int):
             self.deselect_all()
-            if self.GetItemCount() > 0:
-                self.Select(0, True)
-                self.Focus(0)
+            if (count := self.GetItemCount()) > 0 and i >= 0:
+                if i < count:
+                    j = i
+                else:
+                    j = count - 1
+                self.Select(j, True)
+                self.Focus(j)
+
+        def delete_index(self, i: int):
+            if (count := self.GetItemCount()) > 0 and 0 <= i < count:
+                del self.displayed_entries[i]
+                self.SetItemCount(len(self.displayed_entries))
+                wx.ListCtrl.Refresh(self)
+                self.select_index(i)
 
 
     def __init__(self, *args, **kwds):
@@ -304,10 +322,16 @@ class VaultFrame(wx.Frame):
         self._searchbox.SetFocus()
         self._searchbox.EmulateKeyPress(key_event)
 
-    def mark_modified(self):
+    def save_vault2(self):
         self._is_modified = True
         if ((self.vault_file_name is not None) and (self.vault_password is not None)):
             self.save_vault(self.vault_file_name, self.vault_password)
+
+    def mark_modified(self):
+        #self._is_modified = True
+        #if ((self.vault_file_name is not None) and (self.vault_password is not None)):
+        #    self.save_vault(self.vault_file_name, self.vault_password)
+        self.save_vault2()
         self.list.update_fields()
 
     def set_title(self):
@@ -604,7 +628,10 @@ if not, write to the Free Software Foundation, Inc.,
         with RecordFrame(self) as recordframe:
             recordframe.vault_record = entry
             if recordframe.ShowModal() == wx.ID_OK:
-                self.mark_modified()
+                #self.mark_modified()
+                self.save_vault2()
+                # stay on the entry
+                wx.ListCtrl.Refresh(self.list)
 
     def _on_add(self, dummy):
         """
@@ -653,7 +680,9 @@ if not, write to the Free Software Foundation, Inc.,
             return
 
         self.vault.records.remove(entry)
-        self.mark_modified()
+        #self.mark_modified()
+        self.save_vault2()
+        self.list.delete_index(index)
 
     def _on_copy_username(self, dummy):
         """
