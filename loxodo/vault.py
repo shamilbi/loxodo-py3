@@ -288,9 +288,6 @@ class Record:
         for field in record.raw_fields.values():
             self.add_raw_field(field)
 
-    def for_cmp(self):
-        return self._group + self._title
-
 
 def duplicate_record(record2: Record) -> Record:
     record = Record()
@@ -470,9 +467,6 @@ class Vault:
             # the compare_digest() function instead of the == operator
             # to reduce the vulnerability to timing attacks
             raise VaultFormatError("File integrity check failed")
-
-        #self.records.sort(key=lambda r: r._group + r._title)
-        self.records.sort(key=lambda r: r.for_cmp())
 
     def _read_from_file(self, filename, password: bytes):
         """
