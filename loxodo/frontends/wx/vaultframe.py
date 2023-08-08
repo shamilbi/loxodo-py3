@@ -186,6 +186,14 @@ class VaultFrame(wx.Frame):
                     # last entry
                     self.select_index(i)
 
+        def insert_index(self, i: int, r: Record):
+            if i >= 0:
+                self.displayed_entries.insert(i, r)
+                self.SetItemCount(len(self.displayed_entries))
+                wx.ListCtrl.Refresh(self)
+                self.select_index(i)
+
+
     def __init__(self, *args, **kwds):
         kwds["style"] = wx.DEFAULT_FRAME_STYLE
         wx.Frame.__init__(self, *args, **kwds)
@@ -658,7 +666,9 @@ if not, write to the Free Software Foundation, Inc.,
             recordframe.vault_record = entry
             if recordframe.ShowModal() == wx.ID_OK:
                 self.vault.records.append(entry)
-                self.mark_modified()
+                #self.mark_modified()
+                self.save_vault2()
+                self.list.insert_index(index + 1, entry)
 
     def _on_delete(self, dummy):
         """
