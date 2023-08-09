@@ -683,6 +683,7 @@ if not, write to the Free Software Foundation, Inc.,
 
         dial = wx.MessageDialog(
                 self,
+                f'{entry.title}, {entry.user}\n' + \
                 _("Are you sure you want to delete this record? There is no way to undo this action."),
                 _("Really delete record?"),
                 wx.YES_NO | wx.YES_DEFAULT | wx.ICON_QUESTION
