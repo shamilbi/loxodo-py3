@@ -205,7 +205,9 @@ class VaultFrame(wx.Frame):
         self._searchbox = wx.SearchCtrl(self.panel, size=(200, 30))
         # size(200, -1) --> too small height on Linux-x86_64
         self._searchbox.ShowCancelButton(True)
-        self.list = self.VaultListCtrl(self.panel, -1, size=(700, 240), style=wx.LC_REPORT|wx.SUNKEN_BORDER|wx.LC_VIRTUAL)
+        self.list = self.VaultListCtrl(
+                self.panel, -1, size=(700, 240),
+                style=wx.LC_REPORT|wx.BORDER_SUNKEN|wx.LC_VIRTUAL|wx.LC_SINGLE_SEL)
         self.list.Bind(wx.EVT_COMMAND_RIGHT_CLICK, self._on_list_contextmenu)
         self.list.Bind(wx.EVT_RIGHT_UP, self._on_list_contextmenu)
         self.list.Bind(wx.EVT_CHAR, self._on_list_box_char)
