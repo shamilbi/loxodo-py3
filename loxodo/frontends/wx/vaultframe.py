@@ -60,15 +60,16 @@ class VaultFrame(wx.Frame):
             self.vault = None
             self._filterstring = ""
             self.displayed_entries = []
-            self.InsertColumn(0, _("Title"))
-            self.InsertColumn(1, _("Username"))
-            self.InsertColumn(2, _("Group"))
-            self.InsertColumn(3, _("ModTime"))
-            self.SetColumnWidth(0, 256)
-            self.SetColumnWidth(1, 180)
-            self.SetColumnWidth(2, 180)
-            self.SetColumnWidth(3, 128)
-            #self.sort_function = lambda e1: e1.group.lower()
+            columns = (
+                ("Title", 256),
+                ("Username", 180),
+                ("Group", 180),
+                ("ModTime", 128),
+                ("CreateTime", 128),
+                )
+            for i, (name, len_) in enumerate(columns):
+                self.InsertColumn(i, _(name))
+                self.SetColumnWidth(i, len_)
             self.sort_function = lambda e1: (e1.title.lower(), e1.user.lower(), e1.last_mod)
             self.update_fields()
 
@@ -83,15 +84,21 @@ class VaultFrame(wx.Frame):
               return "--"
 
             s = '--'
+            record = self.displayed_entries[item]
             if col == 0:
-                s = self.displayed_entries[item].title
-            if col == 1:
-                s = self.displayed_entries[item].user
-            if col == 2:
-                s = self.displayed_entries[item].group
-            if col == 3:
+                s = record.title
+            elif col == 1:
+                s = record.user
+            elif col == 2:
+                s = record.group
+            elif col == 3:
                 s = ''
-                i: int = self.displayed_entries[item].last_mod
+                i: int = record.last_mod
+                if i:
+                    s = datetime.fromtimestamp(i).strftime('%Y-%m-%d %H:%M:%S')
+            elif col == 4:
+                s = ''
+                i: int = record.created
                 if i:
                     s = datetime.fromtimestamp(i).strftime('%Y-%m-%d %H:%M:%S')
             return s
