@@ -101,6 +101,7 @@ class Fields(IntEnum):
     USER = 0x04
     NOTES = 0x05
     PASSWD = 0x06
+    CREATED = 0x07
     LAST_MOD = 0x0c
     URL = 0x0d
 
@@ -147,6 +148,7 @@ class Record:
     _user: str = ""
     _notes: str = ""
     _passwd: str = ""
+    _created: int = 0
     _last_mod: int = 0
     _url: str = ""
 
@@ -154,7 +156,9 @@ class Record:
     def create():
         record = Record()
         record.uuid = uuid4()
-        record.last_mod = int(time.time())
+        time_ = int(time.time())
+        record.last_mod = time_
+        record.created = time_
         return record
 
     def add_raw_field(self, raw_field: Field):
@@ -173,6 +177,8 @@ class Record:
             self._passwd = raw_field.raw_value.decode('utf_8', 'replace')
         elif raw_field.raw_type == Fields.LAST_MOD and raw_field.raw_len == 4:
             self._last_mod = struct.unpack("<L", raw_field.raw_value)[0]
+        elif raw_field.raw_type == Fields.CREATED and raw_field.raw_len == 4:
+            self._created = struct.unpack("<L", raw_field.raw_value)[0]
         elif raw_field.raw_type == Fields.URL:
             self._url = raw_field.raw_value.decode('utf_8', 'replace')
 
@@ -256,6 +262,16 @@ class Record:
         self.raw_fields[raw_id] = Field(raw_id, struct.pack("<L", value))
 
     @property
+    def created(self) -> int:
+        return self._created
+
+    @created.setter
+    def created(self, value: int):
+        self._created = value
+        raw_id = Fields.CREATED
+        self.raw_fields[raw_id] = Field(raw_id, struct.pack("<L", value))
+
+    @property
     def url(self) -> str:
         return self._url
 
@@ -293,7 +309,9 @@ def duplicate_record(record2: Record) -> Record:
     record = Record()
     record.merge(record2)
     record.uuid = uuid4()
-    record.last_mod = int(time.time())
+    time_ = int(time.time())
+    record.last_mod = time_
+    record.created = time_
     record.title = record2.title + ' (copy)'
     return record
 
