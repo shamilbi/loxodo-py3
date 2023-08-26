@@ -1,0 +1,43 @@
+[project]
+name = 'loxodo'
+description = 'A Password Safe V3 compatible password vault'
+license = 'GPL-2.0+'
+readme = "README.txt"
+requires-python = ">=3.8"
+keywords = [
+    "password manager",
+    "security",
+    "privacy",
+]
+authors = [
+    {name = "Christoph Sommer", email = "mail@christoph-sommer.de"},
+]
+dependencies = [
+    "wxpython",
+    "mintotp",
+]
+dynamic = ["version"]
+
+[project.urls]
+Homepage = 'https://github.com/sommer/loxodo'
+
+[project.scripts]
+loxodo = "loxodo.__main__:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+path = "loxodo/__init__.py"
+
+[tool.hatch.build]
+ignore-vcs = true
+#include = [
+#  "pkg/*.py",
+#  "/tests",
+#]
+exclude = [
+  "loxodo/locale/Makefile",
+]
+
