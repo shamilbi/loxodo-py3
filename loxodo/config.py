@@ -22,6 +22,7 @@
 import os
 import platform
 from configparser import ConfigParser as SafeConfigParser
+from pathlib import Path
 
 
 class Config:
@@ -40,10 +41,10 @@ class Config:
         self.search_passwd = False
         self.alphabet = "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_"
 
-        self._fname = self.get_config_filename()
+        self._fname: Path = self.get_config_filename()
         self._parser = SafeConfigParser()
 
-        if os.path.exists(self._fname):
+        if self._fname.exists():
             self._parser.read(self._fname)
 
         if not self._parser.has_section("base"):
@@ -72,7 +73,7 @@ class Config:
             if self._parser.get("base", "search_passwd") == "True":
                 self.search_passwd = True
 
-        if not os.path.exists(self._fname):
+        if not self._fname.exists():
             self.save()
 
     def set_basescript(self, basescript):
@@ -82,15 +83,15 @@ class Config:
         return self._basescript
 
     def save(self):
-        if not os.path.exists(os.path.dirname(self._fname)):
-            os.mkdir(os.path.dirname(self._fname))
+        if not self._fname.parent.exists():
+            self._fname.parent.mkdir(0o700, parents=True, exist_ok=True)
 
         # remove duplicates and trim to 10 items
         _saved_recentvaults = []
-        for item in self.recentvaults:
-            if item in _saved_recentvaults:
-                continue
-            self._parser.set("base", "recentvaults" + str(len(_saved_recentvaults)), item)
+        _filter = filter(lambda x: x not in _saved_recentvaults, self.recentvaults)
+        for i, item in enumerate(_filter):
+            #self._parser.set("base", "recentvaults" + str(len(_saved_recentvaults)), item)
+            self._parser.set("base", f"recentvaults{i}", item)
             _saved_recentvaults.append(item)
             if len(_saved_recentvaults) >= 10:
                 break
@@ -101,40 +102,39 @@ class Config:
         self._parser.set("base", "alphabetreduction", str(self.reduction))
         self._parser.set("base", "search_notes", str(self.search_notes))
         self._parser.set("base", "search_passwd", str(self.search_passwd))
-        filehandle = open(self._fname, 'w')
-        self._parser.write(filehandle)
-        filehandle.close()
+        with open(self._fname, 'w') as filehandle:  # pylint: disable=unspecified-encoding
+            self._parser.write(filehandle)
 
     @staticmethod
-    def get_config_filename():
+    def get_config_filename() -> Path:
         """
         Returns the full filename of the config file
         """
-        base_fname = "loxodo"
+        base_fname = Path("loxodo")
 
         # On Mac OS X, config files go to ~/Library/Application Support/foo/
         if platform.system() == "Darwin":
-            base_path = os.path.join(os.path.expanduser("~"), "Library", "Application Support")
-            if os.path.isdir(base_path):
-                return os.path.join(base_path, base_fname, base_fname + ".ini")
-
+            base_path = Path.home() / "Library" / "Application Support"
+            if base_path.is_dir():
+                return base_path / base_fname / f'{base_fname}.ini'
         # On Microsoft Windows, config files go to $APPDATA/foo/
-        if platform.system() in ("Windows", "Microsoft"):
+        elif platform.system() in ("Windows", "Microsoft"):
             if "APPDATA" in os.environ:
-                base_path = os.environ["APPDATA"]
-                if os.path.isdir(base_path):
-                    return os.path.join(base_path, base_fname, base_fname + ".ini")
+                base_path = Path(os.environ["APPDATA"])
+                if base_path.is_dir():
+                    return base_path / base_fname / f'{base_fname}.ini'
 
         # Allow config directory override as per freedesktop.org XDG Base Directory Specification
         if "XDG_CONFIG_HOME" in os.environ:
-            base_path = os.environ["XDG_CONFIG_HOME"]
-            if os.path.isdir(base_path):
-                return os.path.join(base_path, base_fname, base_fname + ".ini")
+            base_path = Path(os.environ["XDG_CONFIG_HOME"])
+            if base_path.is_dir():
+                return base_path / base_fname / f'{base_fname}.ini'
 
         # Default configuration path is ~/.config/foo/
-        base_path = os.path.join(os.path.expanduser("~"), ".config")
-        if os.path.isdir(base_path):
-            return os.path.join(base_path, base_fname, base_fname + ".ini")
-        return os.path.join(os.path.expanduser("~"), "." + base_fname + ".ini")
+        base_path = Path.home() / ".config"
+        if base_path.is_dir():
+            return base_path / base_fname / f'{base_fname}.ini'
+
+        return Path.home() / f'.{base_fname}.ini'
 
 config = Config()
