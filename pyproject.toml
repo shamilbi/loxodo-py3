@@ -39,5 +39,6 @@ ignore-vcs = true
 #]
 exclude = [
   "loxodo/locale/Makefile",
+  '*.tmp',
 ]
 
