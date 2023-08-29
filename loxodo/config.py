@@ -23,6 +23,33 @@ import os
 import platform
 from configparser import ConfigParser as SafeConfigParser
 from pathlib import Path
+from collections import deque
+
+
+class History(deque):
+    'Hostory of opened vaults'
+    def __init__(self):
+        super().__init__(self, 10)
+
+    def append(self, value: str):
+        if not value:
+            return
+        value = value.strip()
+        if value:
+            if value in self:
+                # don't append existing path
+                return
+            super().append(value)
+
+    def appendleft(self, value: str):
+        if not value:
+            return
+        value = value.strip()
+        if value:
+            if value in self:
+                # remove and insert
+                self.remove(value)
+            super().appendleft(value)
 
 
 class Config:
@@ -34,7 +61,7 @@ class Config:
         DEFAULT VALUES
         """
         self._basescript = None
-        self.recentvaults = []
+        self.recentvaults = History()
         self.pwlength = 10
         self.reduction = False
         self.search_notes = False
@@ -50,10 +77,10 @@ class Config:
         if not self._parser.has_section("base"):
             self._parser.add_section("base")
 
-        for num in range(10):
-            if not self._parser.has_option("base", "recentvaults" + str(num)):
-                break
-            self.recentvaults.append(self._parser.get("base", "recentvaults" + str(num)))
+        for num in range(self.recentvaults.maxlen):
+            k = f'recentvaults{num}'
+            if self._parser.has_option("base", k):
+                self.recentvaults.append(self._parser.get("base", k))
 
         if self._parser.has_option("base", "alphabet"):
             self.alphabet = self._parser.get("base", "alphabet")
@@ -86,15 +113,8 @@ class Config:
         if not self._fname.parent.exists():
             self._fname.parent.mkdir(0o700, parents=True, exist_ok=True)
 
-        # remove duplicates and trim to 10 items
-        _saved_recentvaults = []
-        _filter = filter(lambda x: x not in _saved_recentvaults, self.recentvaults)
-        for i, item in enumerate(_filter):
-            #self._parser.set("base", "recentvaults" + str(len(_saved_recentvaults)), item)
+        for i, item in enumerate(self.recentvaults):
             self._parser.set("base", f"recentvaults{i}", item)
-            _saved_recentvaults.append(item)
-            if len(_saved_recentvaults) >= 10:
-                break
 
         self._parser.set("base", "pwlength", str(self.pwlength))
         s = self.alphabet.replace('%', '%%')

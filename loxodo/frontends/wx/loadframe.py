@@ -17,7 +17,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #
 
-# pylint: disable=too-many-ancestors
+# pylint: disable=too-many-ancestors,too-few-public-methods,no-member,unused-argument
 
 import wx
 from wx.lib import filebrowsebutton
@@ -42,7 +42,8 @@ class LoadFrame(wx.Frame):
         self._tc_passwd = wx.TextCtrl(self.panel_1, -1, "", style=wx.TE_PASSWORD)
         self.bitmap_1 = wx.StaticBitmap(self.panel_1, -1, get_bitmap('loxodo-icon.png'))
         self.SetIcon(get_icon('loxodo-icon.png', 128, 128))
-        self._fb_filename = filebrowsebutton.FileBrowseButtonWithHistory(self.panel_1, -1, size=(450, -1),  changeCallback = self._on_pickvault, labelText = _("Vault") + ":")
+        self._fb_filename = filebrowsebutton.FileBrowseButtonWithHistory(
+            self.panel_1, -1, size=(450, -1), changeCallback=self._on_pickvault, labelText=_("Vault") + ":")
         if config.recentvaults:
             self._fb_filename.SetHistory(config.recentvaults, 0)
         self.static_line_1 = wx.StaticLine(self.panel_1, -1)
@@ -116,7 +117,7 @@ class LoadFrame(wx.Frame):
             password = self._tc_passwd.GetValue().encode('latin1', 'replace')
             vaultframe = VaultFrame(None, -1, "")
             vaultframe.open_vault(self._fb_filename.GetValue(), password)
-            config.recentvaults.insert(0, self._fb_filename.GetValue())
+            config.recentvaults.appendleft(self._fb_filename.GetValue())
             config.save()
             self.Hide()
             vaultframe.Show()
