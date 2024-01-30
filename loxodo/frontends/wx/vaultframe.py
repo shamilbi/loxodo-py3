@@ -66,6 +66,7 @@ class VaultFrame(wx.Frame):
                 ("Group", 180),
                 ("ModTime", 128),
                 ("CreateTime", 128),
+                ("URL", 256),
                 )
             for i, (name, len_) in enumerate(columns):
                 self.InsertColumn(i, _(name))
@@ -101,6 +102,8 @@ class VaultFrame(wx.Frame):
                 i: int = record.created
                 if i:
                     s = datetime.fromtimestamp(i).strftime('%Y-%m-%d %H:%M:%S')
+            elif col == 5:
+                s = record.url or ''
             return s
 
         def update_fields(self):
