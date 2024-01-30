@@ -1,9 +1,3 @@
 *.pyc
-.DS_Store
 *.tmp
-.eggs
-build
-dist
 .venv
-Pipfile.lock
-loxodo.egg-info/
