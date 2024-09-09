@@ -27,6 +27,8 @@ import binascii
 import webbrowser
 from datetime import datetime
 import re
+import shutil
+import subprocess
 
 import wx
 import wx.adv
@@ -766,10 +768,14 @@ if not, write to the Free Software Foundation, Inc.,
         if index == -1:
             return
         entry = self.list.displayed_entries[index]
-        try:
-            webbrowser.open(entry.url)
-        except ImportError:
-            self.statusbar.SetStatusText(_('Could not load python module "webbrowser" needed to open "%s"') % entry.url, 0)
+        if entry.url:
+            try:
+                if shutil.which("xdg-open"):
+                    subprocess.run(['xdg-open', entry.url], check=False)
+                else:
+                    webbrowser.open(entry.url)
+            except ImportError:
+                self.statusbar.SetStatusText(_('Could not load python module "webbrowser" needed to open "%s"') % entry.url, 0)
 
     def _on_search_for_entry(self, dummy):
         """
