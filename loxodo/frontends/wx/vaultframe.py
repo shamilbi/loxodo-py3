@@ -360,7 +360,8 @@ class VaultFrame(wx.Frame):
     def set_title(self):
         if self.vault:
             header = self.vault.header
-            self.SetTitle(f'Loxodo - {self.vault_file_name}, {header.what_saved}, {header.last_save}')
+            #self.SetTitle(f'Loxodo - {self.vault_file_name}, {header.what_saved}, {header.last_save}')
+            self.SetTitle(f'Loxodo {__version__} - {self.vault_file_name}, {header.last_save}')
 
     def open_vault(self, filename, password):
         """
