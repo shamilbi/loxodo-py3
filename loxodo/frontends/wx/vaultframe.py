@@ -280,6 +280,10 @@ class VaultFrame(wx.Frame):
         self.Bind(wx.EVT_MENU, self._on_open_url, id=temp_id)
 
         temp_id = wx.NewId()
+        self._recordmenu.Append(temp_id, _("Copy URL\tCtrl+Shift+L"))
+        self.Bind(wx.EVT_MENU, self._on_copy_url, id=temp_id)
+
+        temp_id = wx.NewId()
         self._recordmenu.Append(temp_id, _("Search &For Entry\tCtrl+F"))
         self.Bind(wx.EVT_MENU, self._on_search_for_entry, id=temp_id)
 
@@ -777,6 +781,18 @@ if not, write to the Free Software Foundation, Inc.,
                     webbrowser.open(entry.url)
             except ImportError:
                 self.statusbar.SetStatusText(_('Could not load python module "webbrowser" needed to open "%s"') % entry.url, 0)
+
+    def _on_copy_url(self, dummy):
+        index = self.list.GetFirstSelected()
+        if index == -1:
+            return
+        entry = self.list.displayed_entries[index]
+        if entry.url:
+            try:
+                self._copy_to_clipboard(entry.url)
+                self.statusbar.SetStatusText(_('Copied URL of "%s" to clipboard') % entry.title, 0)
+            except RuntimeError:
+                self.statusbar.SetStatusText(_('Error copying URL of "%s" to clipboard') % entry.title, 0)
 
     def _on_search_for_entry(self, dummy):
         """
