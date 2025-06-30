@@ -86,9 +86,18 @@ class Header:
             return datetime.fromtimestamp(i).strftime('%Y-%m-%d %H:%M:%S')
         return ""
 
+    @property
+    def version(self):
+        if Headers.VERSION in self.raw_fields:
+            field = self.raw_fields[Headers.VERSION]
+            i = struct.unpack("<H", field.raw_value)[0]
+            return f'{i:04x}'
+        return ""
+
 
 class Headers(IntEnum):
     'currently implemented headers, the rest are saved as is'
+    VERSION = 0x00  # Version
     LAST_SAVE = 0x04    # Timestamp of last save
     WHAT_SAVED = 0x06   # What performed last save
 
@@ -368,6 +377,12 @@ class Vault:
     The on-disk represenation of the Vault is described in the following file:
     http://passwordsafe.svn.sourceforge.net/viewvc/passwordsafe/trunk/pwsafe/pwsafe/docs/formatV3.txt?revision=2139
     """
+
+    #write_iter = 2048  # version < 0x030F
+    write_iter = 262_144  # version 0x030F
+        # The original minimum was 2,048.  As of file format 0x030F, the minimum is
+        # 262,144. Older databases are silently upgraded to this vaule when saved.
+
     def __init__(self, password, filename=None):
         self.f_tag: bytes = None
         self.f_salt = None
@@ -394,7 +409,7 @@ class Vault:
     def _create_empty(self, password: bytes):
         self.f_tag = FILE_MAGIC
         self.f_salt = _urandom(32)
-        self.f_iter = 2048
+        self.f_iter = self.write_iter
         stretched_password = _stretch_password(password, self.f_salt, self.f_iter)
         self.f_sha_ps = hashlib.sha256(stretched_password).digest()
 
@@ -490,10 +505,8 @@ class Vault:
         """
         Initialize all class members by loading the contents of a Vault stored in the given file.
         """
-        #filehandle = open(filename, 'rb')
         with open(filename, 'rb') as filehandle:
             self._read_from_stream(filehandle, password)
-        #filehandle.close()
 
     def write_to_stream(self, filehandle, password: bytes):
         _last_save = struct.pack("<L", int(time.time()))
@@ -507,9 +520,11 @@ class Vault:
 
         filehandle.write(self.f_tag)
         filehandle.write(self.f_salt)
-        filehandle.write(struct.pack("<L", self.f_iter))
 
-        stretched_password = _stretch_password(password, self.f_salt, self.f_iter)
+        f_iter = max(self.f_iter, self.write_iter)
+        filehandle.write(struct.pack("<L", f_iter))
+
+        stretched_password = _stretch_password(password, self.f_salt, f_iter)
         self.f_sha_ps = hashlib.sha256(stretched_password).digest()
         filehandle.write(self.f_sha_ps)
 

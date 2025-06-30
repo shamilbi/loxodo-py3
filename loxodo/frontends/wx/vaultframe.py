@@ -492,6 +492,12 @@ if not, write to the Free Software Foundation, Inc.,
         about.SetWebSite("http://www.christoph-sommer.de/loxodo")
         about.SetLicense(gpl_v2)
         about.SetDevelopers(developers)
+        if self.vault:
+            description = (
+                f'File: version: {self.vault.header.version}'
+                f', iter: {self.vault.f_iter}'
+            )
+            about.SetDescription(description)
         wx.adv.AboutBox(about)
 
     def _on_settings(self, dummy):
