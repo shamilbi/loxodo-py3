@@ -1,7 +1,7 @@
 PasswordSafe database format description version 4.01
 -----------------------------------------------------
 
-Copyright (c) 2013-2020 Rony Shapiro <ronys@pwsafe.org>.
+Copyright (c) 2013-2025 Rony Shapiro <ronys@pwsafe.org>.
 All rights reserved. Use of the code is allowed under the Artistic
 License terms, as specified in the LICENSE file distributed with this
 code, or available from
@@ -87,15 +87,14 @@ time.
 2.2.2 ITER is the number of iterations on the hash function to
 calculate Pi', stored as a 32 bit little-endian value. This value is
 stored here in order to future-proof the file format against increases
-in processing power.
+in processing power. The current minimum is 262,144.
 
 2.2.3 Pi' is the "stretched key" for Key Block i, generated from the
 user's passphrase (UTF-8 encoded) and the SALT, as defined by the
 hash-function-based key stretching algorithm in [PBKDF2], with SHA-256
-[SHA256] as the hash function, and ITER iterations (at least
-2048). The intention is that Key Block i will be generated with user
-i's passphrase. All keyblocks protect the same K and L values (see
-below).
+[SHA256] as the hash function, and ITER iterations. The intention is 
+that Key Block i will be generated with user i's passphrase.
+All keyblocks protect the same K and L values (see below).
 
 2.2.4 KW is the Key Wrap algorithm defined in [RFC3394], using the
 user-specified encryption algorithm (TwoFish, AES,...).
@@ -209,6 +208,31 @@ representation.
  Macintosh, the value needs to be adjusted by the constant value 2082844800
  to account for the different epoch of its time_t type.)
 
+3.1.4 Password Expiration
+ There are four possible combinations of the password expiry fields.
+ When an entry is read, the type of expiration setting is inferred
+ from which fields are recorded in the record.
+
+ Password Expiry Time        0x0a
+ Password Expiry Interval    0x11
+
+Setting                       Time (0x0a)  Interval (0x11)  Comments
+--------------------------------------------------------------------
+Never
+Specific Date                      X                           [1]
+Date with recurring interval       X             X             [2]  
+Special Case                                     X             [3] 
+
+[1] If the user sets a non-recurring interval, it is recorded as a
+specific date.
+
+[2] If the user sets a recurring interval, the interval and the
+next expiration date are both recorded.
+
+[3] This case is interpreted as "Never" and the interval will be
+ignored.  This case is not currently written to the file, but exists
+in some older files.
+
 3.2 Field types for the PasswordSafe database header:
                                                  Currently
 Name                        Value        Type    Implemented      Comments
@@ -231,13 +255,14 @@ Reserved                    0x0e        -                            [13]
 Recently Used Entries       0x0f        Text                         [14]
 Named Password Policies     0x10        Text                         [15]
 Empty Groups                0x11        Text                         [16]
-Yubico                      0x12        Text                         [13]
+Yubico                      0x12        Text                         [18]
 Timestamp of last master
 password change             0x13        time_t        Y              [5]
 End of Entry                0xff        [empty]       Y              [17]
 
 [1] The version number of the database format. For this version, the value
-is 0x0400 (stored in little-endian format, that is, 0x00, 0x04).
+is 0x0401 (stored in little-endian format, that is, 0x01, 0x04).
+PasswordSafe V3.69 introduced Format 0x0401
 
 [2] A universally unique database identifier is needed in order to
 synchronize databases across different machine. Representation is
@@ -346,6 +371,9 @@ fields, this field can appear multiple times.
 [17] An explicit end of entry field is useful for supporting new fields
 without breaking backwards compatability.
 
+[18] YubiKey secret key, saved so that it can be used to initialize
+additional YubiKeys.  20 bytes.  Introduced in format version 0x030C.
+
 3.3 Field types for database Records:
                                                  Currently
 Name                        Value        Type    Implemented      Comments
@@ -382,6 +410,21 @@ Credit Card Expiration      0x1d        Text          N              [23]
 Credit Card Verif. Value    0x1e        Text          N              [23]
 Credit Card PIN             0x1f        Text          N              [23]
 QR Code                     0x20        Text          N              [24]
+TOTP Config                 0x21        1 byte        N              [29]
+TOTP Length                 0x22        1 byte        N              [29]
+TOTP Time Step              0x23        1 byte        N              [29]
+TOTP Start Time             0x24        time_t        N              [29]
+*RESERVED*                  0x25        Text          Y              [30]
+*RESERVED*                  0x26        Text          Y              [30]
+*RESERVED*                  0x27        Text          Y              [30]
+*RESERVED*                  0x28        time_t        Y              [30]
+*RESERVED*                  0x29        Binary        Y              [30]
+Passkey Credential ID       0x2a        Binary        Y              [31]
+Passkey Relying Party ID    0x2b        Text          Y              [31]
+Passkey User Handle         0x2c        Binary        Y              [31]
+Passkey Algorithm ID        0x2d        4 bytes       Y              [31]
+Passkey Private Key         0x2e        Binary        Y              [31]
+Passkey Sign Count          0x2f        4 bytes       Y              [31]
 BaseUUID                    0x41        UUID          Y              [25]
 AliasUUID                   0x42        UUID          Y
 ShortcutUUID                0x43        UUID          Y
@@ -442,6 +485,8 @@ where:
     T  = Time password was set (time_t written out in %08x)
     L  = 4 hexadecimal digit password length (in TCHAR)
     P  = Password
+The list is sorted by T, with the oldest entry first.  Newer entries are appended
+to the end of the list.
 No history being kept for a record can be represented either by the lack of
 the PWH field (preferred), or by a header of _T("00000"):
     flag = 0, max = 00, num = 00
@@ -548,6 +593,69 @@ to QR code without any further encoding.
 
 [28] An explicit end of entry field is useful for supporting new fields
 without breaking backwards compatability.
+
+[29] The TOTP parameters fields are TOTP Config (0x21), TOTP Digits (0x22),
+TOTP Time Step (0x23), and TOTP Start Time (0x24). If any of these fields is not
+present, a default applies as specified below. These fields, or their implicit
+default values, are only used by Password Safe if the "Two Factor Key" field (0x1b)
+is present.
+These TOTP parameters fields have the following format:
+
+    TOTP Config     = 1 byte with the following format (bit 7 is MSB):
+                        bits 0-1: HMAC hash algorithm as follows:
+                            0x00: SHA1
+                            (all other values 0x01 through 0x03 are reserved.)
+                        bits 2-7: Reserved.
+                      If this TOTP Config field is not present, the default
+                      HMAC hash algorithm is SHA1 (HMAC-SHA1).
+
+    TOTP Length     = 1 byte indicating the number of TOTP code digits.
+                      This is the RFC4226 "Digit" value. If not specified,
+                      the default length for a TOTP code is 6 digits (0x06).
+
+    TOTP Time Step  = 1 byte indicating the RFC6238 time step "X" value in seconds.
+                      If not specified, the default is 30 seconds (0x1E).
+
+    TOTP Start Time = This is the RFC6238 "T0" value, the time at which to
+                      start counting time steps. If not specified, the
+                      default is 0. The format is that of a 40 bit (5 byte)
+                      Password Safe time_t value as specified in Section 3.1.3.
+
+[30] This value is used in V3 of the PasswordSafe format. Reserving it here to
+maintain consistency with values that follow.
+
+[31] The passkey parameters fields are listed below. If an entry contains
+a passkey, all fields must be present and non-empty. Below are references
+to the official specification documenting each field, including requirements
+of the contents.
+
+    Passkey Credential ID
+    https://www.w3.org/TR/webauthn-2/#credential-id
+
+    Passkey Relying Party ID
+    https://www.w3.org/TR/webauthn-2/#relying-party-identifier
+
+    Passkey User Handle
+    https://www.w3.org/TR/webauthn-2/#user-handle
+
+    Passkey Algorithm ID = IANA COSE Algorithm Identifier
+    https://www.w3.org/TR/webauthn-2/#sctn-alg-identifier
+    Encode as signed (!) 32 bit little-endian value, example for ES256:
+    0xf9 0xff 0xff 0xff
+    To enhance platform compatability, the application should prefer to
+    create passkeys using ES256 (if supported by the Relying Party).
+
+    Passkey Private Key
+    https://www.w3.org/TR/webauthn-2/#credential-private-key
+    For maximum platform compatability, the private key must be encoded
+    in DER format.
+
+    Passkey Sign Count, encoded as unsigned 32 bit little-endian value
+    https://www.w3.org/TR/webauthn-2/#sctn-sign-counter
+    The value stored in the database is the last-used value, so the next
+    assertion must first increment it and use the incremented value.
+
+These parameters were introduced in version 0x0401 (PasswordSafe V3.69).
 
 3.4 Attachments
 
@@ -665,6 +773,5 @@ interoperability.
 [TWOFISH] http://www.schneier.com/paper-twofish-paper.html
 [SHA256]
 http://csrc.nist.gov/publications/fips/fips180-2/fips180-2withchangenotice.pdf
-[KEYSTRETCH] http://www.schneier.com/paper-low-entropy.pdf
-
+[PBKDF2] https://datatracker.ietf.org/doc/html/rfc2898
 End of Format description.
